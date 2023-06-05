@@ -395,7 +395,7 @@ def main(
     set_seeds(seed)
     device = f"cuda:{device}" if (device >= 0 and torch.cuda.is_available()) else "cpu"
 
-    run_name = f"{dataset}_{dirty_lik}_{temperature}_{likelihood_temp}_{augment}_{prior_scale}_{logits_temp}_{label_noise}_{likelihood}_{seed}"
+    run_name = f"{temperature}_{likelihood_temp}_{augment}_{prior_scale}_{logits_temp}_{label_noise}_{likelihood}_{seed}"
 
     wandb.init(
         project=f"{dataset}_{dirty_lik}",
