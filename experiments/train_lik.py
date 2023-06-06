@@ -96,7 +96,7 @@ def test_bma(net, data_loader, samples_dir, nll_criterion=None, device=None):
 
 
 @torch.no_grad()
-def get_metrics_training(net, data_loader, device=None):
+def get_metrics_training(net, logits_temp, data_loader, device=None):
     net.eval()
 
     all_logits = []
@@ -107,6 +107,7 @@ def get_metrics_training(net, data_loader, device=None):
         all_logits.append(_logits)
         all_Y.append(Y)
     all_logits = torch.cat(all_logits)
+    all_logits.div_(logits_temp)
     all_Y = torch.cat(all_Y)
 
     log_p = torch.distributions.Categorical(logits=all_logits).log_prob(all_Y)
@@ -116,7 +117,7 @@ def get_metrics_training(net, data_loader, device=None):
 
 
 @torch.no_grad()
-def get_metrics_bma(net, data_loader, samples_dir, device=None):
+def get_metrics_bma(net, logits_temp, data_loader, samples_dir, device=None):
     net.eval()
 
     ens_logits = []
@@ -131,6 +132,7 @@ def get_metrics_bma(net, data_loader, samples_dir, device=None):
             all_logits.append(_logits)
             all_Y.append(Y)
         all_logits = torch.cat(all_logits)
+        all_logits.div_(logits_temp)
         all_Y = torch.cat(all_Y)
 
         ens_logits.append(all_logits)
@@ -289,6 +291,7 @@ def run_csgld(
     lr=1e-2,
     momentum=0.9,
     temperature=1,
+    logits_temp=1,
     n_samples=20,
     n_cycles=1,
     epochs=1,
@@ -324,7 +327,7 @@ def run_csgld(
                     wandb.save("samples/*.pt")
 
                     bma_metrics_test = get_metrics_bma(
-                        net, test_loader, samples_dir, device=device
+                        net, logits_temp, test_loader, samples_dir, device=device
                     )
 
                     wandb.log(
@@ -338,7 +341,9 @@ def run_csgld(
 
             sgld_scheduler.step()
 
-        log_p_test, acc_test = get_metrics_training(net, test_loader, device=device)
+        log_p_test, acc_test = get_metrics_training(
+            net, logits_temp, test_loader, device=device
+        )
         nll_test = -log_p_test.mean().item()
 
         wandb.log({f"sgld/test/nll": nll_test}, step=e)
@@ -348,12 +353,16 @@ def run_csgld(
             f"sgld (epoch {e}) : test nll {nll_test:.4f}, test acc {acc_test:.4f}"
         )
 
-    bma_metrics_test = get_metrics_bma(net, test_loader, samples_dir, device=device)
-    wandb.log({f"sgld/test/bma_{k}": v for k, v in bma_metrics_test.items()})
+    bma_metrics_test = get_metrics_bma(
+        net, logits_temp, test_loader, samples_dir, device=device
+    )
+    wandb.log({f"sgld/test/bma_{k}": v for k, v in bma_metrics_test.items()}, step=e)
     logging.info(f"sgld bma test nll (epoch {e}): {bma_metrics_test['bayes_loss']:.4f}")
 
-    bma_metrics_train = get_metrics_bma(net, train_loader, samples_dir, device=device)
-    wandb.log({f"sgld/train/bma_{k}": v for k, v in bma_metrics_train.items()})
+    bma_metrics_train = get_metrics_bma(
+        net, logits_temp, train_loader, samples_dir, device=device
+    )
+    wandb.log({f"sgld/train/bma_{k}": v for k, v in bma_metrics_train.items()}, step=e)
     logging.info(
         f"sgld bma train nll (epoch {e}): {bma_metrics_train['bayes_loss']:.4f}"
     )
@@ -512,6 +521,7 @@ def main(
                 lr=sgld_lr,
                 momentum=momentum,
                 temperature=temperature,
+                logits_temp=logits_temp,
                 n_samples=n_samples,
                 n_cycles=n_cycles,
                 epochs=sgld_epochs,
