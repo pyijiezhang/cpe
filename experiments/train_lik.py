@@ -393,6 +393,8 @@ def main(
     burn_in=0,
     n_samples=20,
     n_cycles=0,
+    num_workers=2,
+    pin_memory=False,
 ):
     if data_dir is None and os.environ.get("DATADIR") is not None:
         data_dir = os.environ.get("DATADIR")
@@ -451,9 +453,15 @@ def main(
         train_data = prepare_transforms(augment=augment, train_data=train_data)
         # train_data.transform = prepare_transforms(augment=augment)
     train_loader = DataLoader(
-        train_data, batch_size=batch_size, num_workers=2, shuffle=True
+        train_data,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=True,
+        pin_memory=pin_memory,
     )
-    test_loader = DataLoader(test_data, batch_size=batch_size, num_workers=2)
+    test_loader = DataLoader(
+        test_data, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory
+    )
 
     if dirty_lik is True or dirty_lik == "std":
         net = ResNet18(num_classes=train_data.total_classes).to(device)
