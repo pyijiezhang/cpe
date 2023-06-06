@@ -6,7 +6,7 @@ import numpy as np
 
 from torch.utils.data import random_split, Dataset
 from torch.distributions import Categorical
-from torchvision.datasets import CIFAR10, ImageFolder, FashionMNIST
+from torchvision.datasets import CIFAR10, ImageFolder, FashionMNIST, MNIST
 import torchvision.transforms as transforms
 
 from .augmentations import augmentations, augmentations_all
@@ -58,6 +58,22 @@ _FMNIST_TEST_TRANSFORM = transforms.Compose(
     [
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,)),
+    ]
+)
+
+_MNIST_TRAIN_TRANSFORM = transforms.Compose(
+    [
+        transforms.RandomCrop(28, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,)),
+    ]
+)
+
+_MNIST_TEST_TRANSFORM = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,)),
     ]
 )
 
@@ -371,6 +387,32 @@ def get_fmnist(root=None, label_noise=0, augment=True, n_aug=1, return_orig=Fals
 
     test_data = FashionMNIST(
         root=root, train=False, download=True, transform=_FMNIST_TEST_TRANSFORM
+    )
+
+    return train_data, test_data
+
+
+def get_mnist(root=None, label_noise=0, augment=True, n_aug=1, return_orig=False):
+    if augment:
+        train_data = MNIST(
+            root=root, train=True, download=True, transform=_MNIST_TRAIN_TRANSFORM
+        )
+    else:
+        train_data = MNIST(
+            root=root, train=True, download=True, transform=_MNIST_TEST_TRANSFORM
+        )
+    if label_noise > 0:
+        train_data = LabelNoiseDataset(train_data, n_labels=10, label_noise=label_noise)
+    if augment and return_orig:
+        train_data = AugmentedDataset(
+            train_data, base_transform=_MNIST_TEST_TRANSFORM, n_aug=n_aug
+        )
+
+    setattr(train_data, "total_augs", 9 * 9 * 2)
+    setattr(train_data, "total_classes", 10)
+
+    test_data = MNIST(
+        root=root, train=False, download=True, transform=_MNIST_TEST_TRANSFORM
     )
 
     return train_data, test_data

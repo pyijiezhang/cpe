@@ -15,6 +15,7 @@ from data_aug.datasets import (
     get_cifar10,
     get_tiny_imagenet,
     get_fmnist,
+    get_mnist,
     prepare_transforms,
 )
 from data_aug.nn import (
@@ -353,20 +354,6 @@ def run_csgld(
             f"sgld (epoch {e}) : test nll {nll_test:.4f}, test acc {acc_test:.4f}"
         )
 
-    bma_metrics_test = get_metrics_bma(
-        net, logits_temp, test_loader, samples_dir, device=device
-    )
-    wandb.log({f"sgld/test/bma_{k}": v for k, v in bma_metrics_test.items()}, step=e)
-    logging.info(f"sgld bma test nll (epoch {e}): {bma_metrics_test['bayes_loss']:.4f}")
-
-    bma_metrics_train = get_metrics_bma(
-        net, logits_temp, train_loader, samples_dir, device=device
-    )
-    wandb.log({f"sgld/train/bma_{k}": v for k, v in bma_metrics_train.items()}, step=e)
-    logging.info(
-        f"sgld bma train nll (epoch {e}): {bma_metrics_train['bayes_loss']:.4f}"
-    )
-
 
 def main(
     wandb_mode=None,
@@ -444,6 +431,10 @@ def main(
         )
     elif dataset == "fmnist":
         train_data, test_data = get_fmnist(
+            root=data_dir, augment=bool(augment), label_noise=label_noise
+        )
+    elif dataset == "mnist":
+        train_data, test_data = get_mnist(
             root=data_dir, augment=bool(augment), label_noise=label_noise
         )
     else:
