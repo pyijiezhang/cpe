@@ -368,6 +368,7 @@ def main(
     dirty_lik=True,
     prior_scale=1,
     augment=True,
+    perm=False,
     noise=0.0,
     likelihood="softmax",
     likelihood_temp=1,
@@ -408,6 +409,7 @@ def main(
             "momentum": momentum,
             "prior_scale": prior_scale,
             "augment": augment,
+            "perm": perm,
             "dirty_lik": dirty_lik,
             "temperature": temperature,
             "label_noise": label_noise,
@@ -437,11 +439,11 @@ def main(
         )
     elif dataset == "fmnist":
         train_data, test_data = get_fmnist(
-            root=data_dir, augment=bool(augment), label_noise=label_noise
+            root=data_dir, augment=bool(augment), label_noise=label_noise, perm=perm
         )
     elif dataset == "mnist":
         train_data, test_data = get_mnist(
-            root=data_dir, augment=bool(augment), label_noise=label_noise
+            root=data_dir, augment=bool(augment), label_noise=label_noise, perm=perm
         )
     else:
         raise NotImplementedError
