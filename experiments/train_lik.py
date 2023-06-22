@@ -285,6 +285,7 @@ def run_sgld(
 
 def run_csgld(
     train_loader,
+    train_loader_eval,
     test_loader,
     net,
     criterion,
@@ -341,6 +342,22 @@ def run_csgld(
                         f"sgld bma test nll (epoch {e}): {bma_metrics_test['bayes_loss']:.4f}"
                     )
 
+                    bma_metrics_train = get_metrics_bma(
+                        net, logits_temp, train_loader_eval, samples_dir, device=device
+                    )
+
+                    wandb.log(
+                        {
+                            f"sgld/train/bma_{k}": v
+                            for k, v in bma_metrics_train.items()
+                        },
+                        step=e,
+                    )
+
+                    logging.info(
+                        f"sgld bma train nll (epoch {e}): {bma_metrics_train['bayes_loss']:.4f}"
+                    )
+
             sgld_scheduler.step()
 
         log_p_test, acc_test = get_metrics_training(
@@ -395,10 +412,10 @@ def main(
     set_seeds(seed)
     device = f"cuda:{device}" if (device >= 0 and torch.cuda.is_available()) else "cpu"
 
-    run_name = f"{temperature}_{likelihood_temp}_{augment}_{prior_scale}_{logits_temp}_{label_noise}_{likelihood}_{seed}"
+    run_name = f"{likelihood_temp}_{augment}_{perm}_{prior_scale}_{logits_temp}_{label_noise}_{likelihood}_{seed}"
 
     wandb.init(
-        project=f"{dataset}_{dirty_lik}",
+        project=f"likelihood_T_{dataset}_{dirty_lik}",
         name=f"{run_name}",
         mode=wandb_mode,
         config={
@@ -406,7 +423,6 @@ def main(
             "dataset": dataset,
             "batch_size": batch_size,
             "lr": lr,
-            "momentum": momentum,
             "prior_scale": prior_scale,
             "augment": augment,
             "perm": perm,
@@ -415,6 +431,7 @@ def main(
             "label_noise": label_noise,
             "burn_in": burn_in,
             "sgld_lr": sgld_lr,
+            "momentum": momentum,
             "dir_noise": noise,
             "likelihood": likelihood,
             "likelihood_T": likelihood_temp,
@@ -448,14 +465,20 @@ def main(
     else:
         raise NotImplementedError
 
-    if type(augment) is not bool and augment != "true":
-        train_data = prepare_transforms(augment=augment, train_data=train_data)
-        # train_data.transform = prepare_transforms(augment=augment)
+    # if type(augment) is not bool and augment != "true":
+    #     train_data = prepare_transforms(augment=augment, train_data=train_data)
+    #     train_data.transform = prepare_transforms(augment=augment)
     train_loader = DataLoader(
         train_data,
         batch_size=batch_size,
         num_workers=num_workers,
         shuffle=True,
+        pin_memory=pin_memory,
+    )
+    train_loader_eval = DataLoader(
+        train_data,
+        batch_size=batch_size,
+        num_workers=num_workers,
         pin_memory=pin_memory,
     )
     test_loader = DataLoader(
@@ -520,6 +543,7 @@ def main(
         if n_cycles:
             run_csgld(
                 train_loader,
+                train_loader_eval,
                 test_loader,
                 net,
                 criterion,
