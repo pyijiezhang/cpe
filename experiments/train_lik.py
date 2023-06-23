@@ -448,11 +448,11 @@ def main(
         )
     elif dataset == "cifar10":
         train_data, test_data = get_cifar10(
-            root=data_dir, augment=bool(augment), label_noise=label_noise
+            root=data_dir, augment=bool(augment), label_noise=label_noise, perm=perm
         )
     elif dataset == "cifar100":
         train_data, test_data = get_cifar100(
-            root=data_dir, augment=bool(augment), label_noise=label_noise
+            root=data_dir, augment=bool(augment), label_noise=label_noise, perm=perm
         )
     elif dataset == "fmnist":
         train_data, test_data = get_fmnist(
